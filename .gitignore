@@ -1,0 +1,7 @@
+node_modules/
+libraries/
+data/
+.env
+*.log
+*.pid
+EOF

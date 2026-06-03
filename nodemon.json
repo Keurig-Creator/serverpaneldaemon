@@ -1,0 +1,5 @@
+  {
+    "watch": ["api.js", "daemon.js", "procces.js"],
+    "ext": "js",
+    "ignore": ["data/**", "*.db", "*.db-*", "node_modules/**"]
+  }
