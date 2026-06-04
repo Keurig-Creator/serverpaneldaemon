@@ -3,12 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const Database = require('better-sqlite3');
 
-// Path to the data dir as seen INSIDE the paneld container (used for fs reads).
 const DATA_BASE_DIR = path.join(__dirname, '..', 'data');
-// Path to the data dir on the HOST. Bind-mount sources for `docker run` are
-// sent over the docker socket and resolved by the HOST daemon, so they must be
-// host paths, not paneld-internal ones. Falls back to DATA_BASE_DIR when the
-// daemon runs directly on the host.
 const HOST_DATA_DIR = process.env.HOST_DATA_DIR || DATA_BASE_DIR;
 const MC_IMAGE = process.env.MC_IMAGE || 'daemon-server';
 const MC_NETWORK = process.env.MC_NETWORK || 'serverpanel';
@@ -170,20 +165,15 @@ function wireProcess(serverId, proc, { removesOnExit }) {
   });
 }
 
-// Re-attach to a single already-running paper-<id> container: backfill recent
-// console history, then attach for live output + stdin.
 function reattach(serverId) {
   const name = `paper-${serverId}`;
   pushLine(serverId, `[DAEMON] Reattaching to running container ${name}...`);
 
-  // `docker attach` only streams NEW output, so backfill recent history first.
   exec(`docker logs --tail 200 ${name}`, (err, stdout, stderr) => {
     [stdout, stderr].forEach(buf => {
       if (buf) buf.split('\n').forEach(l => { if (l.length) pushLine(serverId, stripAnsi(l)); });
     });
 
-    // --sig-proxy=false: if this attach client is killed (e.g. paneld restart),
-    // do NOT forward a signal that would stop the underlying container.
     const proc = spawn('docker', ['attach', '--sig-proxy=false', name]);
     processes[serverId] = proc;
     savePid(serverId, proc.pid);
@@ -193,8 +183,6 @@ function reattach(serverId) {
   });
 }
 
-// On daemon startup, re-attach to any paper-<id> containers still running from
-// before a restart so the panel regains console + stop/kill control.
 function reattachAll() {
   exec(`docker ps --filter name=paper- --format '{{.Names}}'`, (err, out) => {
     if (err || !out) return;
@@ -227,8 +215,6 @@ function startServer(serverId = 'main') {
 
   const name = `paper-${serverId}`;
 
-  // Remove any stale container left from a previous run (ignore errors), then
-  // launch the server attached so we can stream its console and write to stdin.
   exec(`docker rm -f ${name}`, () => {
     const args = ['run', '-i', '--rm', '--name', name, '--network', MC_NETWORK];
     if (config.port) args.push('-p', `${config.port}:${config.port}`);
@@ -246,21 +232,18 @@ function startServer(serverId = 'main') {
 }
 
 function stopServer(serverId = 'main') {
-  const proc = processes[serverId];
-  if (!proc) {
-    pushLine(serverId, "[DAEMON] No process to stop");
-    return;
-  }
   setStatus(serverId, 'Stopping');
   pushLine(serverId, "[DAEMON] Stop command sent");
-  proc.stdin.write("stop\n");
+  exec(`docker stop -t 60 paper-${serverId}`, (err) => {
+    if (err) pushLine(serverId, `[DAEMON] Stop error: ${err.message}`);
+  });
 }
 
 function killServer(serverId = 'main') {
   pushLine(serverId, "[DAEMON] Kill command sent");
   setStatus(serverId, 'Stopping');
 
-  // Force-remove the container; this also terminates the attached `docker run`.
+  // Force remove the container; this also terminates the attached `docker run`.
   exec(`docker rm -f paper-${serverId}`, (err) => {
     if (err) pushLine(serverId, `[DAEMON] Kill error: ${err.message}`);
   });

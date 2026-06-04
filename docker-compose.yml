@@ -6,8 +6,6 @@ services:
       - "8080:3000"
     environment:
       - PORT=3000
-      # Host path of ./data, so the daemon's `docker run -v` mounts resolve on
-      # the host (the docker socket is the host daemon, not this container).
       - HOST_DATA_DIR=/home/david/code/Daemon/data
     volumes:
       - ./data:/app/data
@@ -16,10 +14,6 @@ services:
       - serverpanel
     restart: unless-stopped
 
-# The Minecraft servers (smp, creative, ...) are NOT defined here — the paneld
-# daemon launches them on demand from the `daemon-server` image, one container
-# per data dir. Build that image with:
-#   docker build -f Dockerfile.mc -t daemon-server .
 networks:
   serverpanel:
     external: true
