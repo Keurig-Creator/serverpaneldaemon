@@ -5,7 +5,7 @@ const Database = require('better-sqlite3');
 
 const DATA_BASE_DIR = path.join(__dirname, '..', 'data');
 const HOST_DATA_DIR = process.env.HOST_DATA_DIR || DATA_BASE_DIR;
-const MC_IMAGE = process.env.MC_IMAGE || 'daemon-server';
+const MC_IMAGE = process.env.MC_IMAGE || 'notkeurig/daemon-server:latest';
 const MC_NETWORK = process.env.MC_NETWORK || 'serverpanel';
 
 function readServerPort(dir) {
