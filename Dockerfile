@@ -1,8 +1,6 @@
-FROM node:20
-
-RUN apt-get update && apt-get install -y docker.io
-
+FROM node:20-alpine
 WORKDIR /app
+RUN apk add --no-cache python3 make g++ gcc libc6-compat
 COPY package*.json ./
 RUN npm install
 COPY . .
